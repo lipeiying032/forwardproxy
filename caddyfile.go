@@ -106,6 +106,13 @@ func (h *Handler) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 			}
 			h.DisableInsecureUpstreamsCheck = true
 
+		case "websocket":
+			args := d.RemainingArgs()
+			if len(args) != 0 {
+				return d.ArgErr()
+			}
+			h.WebSocket = true
+
 		case "probe_resistance":
 			args := d.RemainingArgs()
 			if len(args) > 1 {

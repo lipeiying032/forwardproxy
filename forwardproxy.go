@@ -42,6 +42,7 @@ import (
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/caddyserver/forwardproxy/httpclient"
+	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
 )
@@ -67,6 +68,9 @@ type Handler struct {
 
 	// If true, the strict check preventing HTTP upstreams will be disabled.
 	DisableInsecureUpstreamsCheck bool `json:"disable_insecure_upstreams_check,omitempty"`
+
+	// If true, WebSocket upgrade requests are accepted as tunnel transports.
+	WebSocket bool `json:"websocket,omitempty"`
 
 	// Host(s) (and ports) of the proxy. When you configure a client,
 	// you will give it the host (and port) of the proxy to use.
@@ -258,9 +262,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 	if h.ProbeResistance != nil && len(h.ProbeResistance.Domain) > 0 && reqHost == h.ProbeResistance.Domain {
 		return serveHiddenPage(w, authErr)
 	}
-	if h.Hosts.Match(r) && (r.Method != http.MethodConnect || authErr != nil) {
+	webSocketTunnel := h.WebSocket && websocket.IsWebSocketUpgrade(r)
+	if h.Hosts.Match(r) &&
+		((r.Method != http.MethodConnect && !webSocketTunnel) || authErr != nil) {
 		// Always pass non-CONNECT requests to hostname
-		// Pass CONNECT requests only if probe resistance is enabled and not authenticated
+		// Pass CONNECT and WebSocket tunnel requests only if they are not
+		// authenticated
 		if h.shouldServePACFile(r) {
 			return h.servePacFile(w, r)
 		}
@@ -274,6 +281,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 		}
 		w.Header().Set("Proxy-Authenticate", "Basic realm=\"Caddy Secure Web Proxy\"")
 		return caddyhttp.Error(http.StatusProxyAuthRequired, authErr)
+	}
+
+	if webSocketTunnel {
+		return h.serveWebSocket(w, r)
 	}
 
 	if r.ProtoMajor != 1 && r.ProtoMajor != 2 && r.ProtoMajor != 3 {

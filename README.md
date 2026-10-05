@@ -88,6 +88,7 @@ forward_proxy {
 	ports     80 443
 	hide_ip
 	hide_via
+	websocket
 	disable_insecure_upstreams_check
 	probe_resistance secret-link-kWWL9Q.com # alternatively you can use a real domain, such as caddyserver.com
 	serve_pac /secret-proxy.pac
@@ -160,6 +161,7 @@ forward_proxy {
   Specifies ports forwardproxy will whitelist for all requests. Other ports will be forbidden.
 
   Default: no restrictions.
+
 -     acl {  
     	acl_directive  
     	...  
@@ -201,6 +203,18 @@ forward_proxy {
   ```
   
   Default deny rules intend to prohibit access to localhost and local networks and may be expanded in future.
+
+### WebSocket
+
+- `websocket`
+  Accepts Naive's WebSocket tunnel protocol on WebSocket upgrade requests. This is useful behind
+  CDNs that do not forward HTTP CONNECT. The first binary message selects the target
+  (`version, address type, address, port`), the server replies with one status byte, and subsequent
+  binary messages carry the target TCP stream. Naive Variant 1 padding is negotiated with the
+  existing `Padding` headers. Authentication, ACL, ports, dial timeout, and upstream settings are
+  shared with the normal forward proxy.
+
+  Default: disabled.
 
 ### Timeouts
 
