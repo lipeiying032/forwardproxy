@@ -1,5 +1,6 @@
 name: Build
 on:
+  workflow_dispatch:
   push:
     branches: [naive]
     paths-ignore: [README.md]
@@ -30,7 +31,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BUNDLE }}.tar.xz caddy executable sha256 ${{ env.SHA256SUM }}
-          path: sha256sum.txt
+          path: |
+            sha256sum.txt
+            ${{ env.BUNDLE }}.tar.xz
       - name: Upload caddy assets
         if: ${{ github.event_name == 'release' }}
         run: gh release upload "${GITHUB_REF##*/}"  ${{ env.BUNDLE }}.tar.xz --clobber
